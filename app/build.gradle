@@ -1,0 +1,19 @@
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'in.co.one7aistore.zeno'
+    compileSdk 34
+    defaultConfig {
+        applicationId "in.co.one7aistore.zeno"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+    }
+}
