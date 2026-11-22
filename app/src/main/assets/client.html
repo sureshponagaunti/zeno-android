@@ -336,6 +336,19 @@
     } catch (e) {}
   }
 
+  function triggerAlertSound() {
+    playTone(currentSound);
+    if (window.AndroidBridge && window.AndroidBridge.playSavedNotificationSound) {
+      window.AndroidBridge.playSavedNotificationSound();
+    }
+  }
+
+  function applySavedSoundFromNative(sound) {
+    currentSound = sound || 'zeno_ding';
+    localStorage.setItem('zeno_sound', currentSound);
+    document.getElementById('notifBtn').classList.toggle('muted', currentSound === 'mute');
+  }
+
   function openSoundModal() {
     document.querySelectorAll('.sound-option').forEach(el => {
       el.classList.toggle('active', el.dataset.sound === currentSound);
@@ -376,7 +389,7 @@
     area.appendChild(row);
     input.value = '';
     area.scrollTop = area.scrollHeight;
-    playTone(currentSound);
+    triggerAlertSound();
   }
 
   function handleAttachment(e) {
@@ -388,7 +401,7 @@
     row.innerHTML = `<span class="msg-meta">You • ${getTimeNow()}</span><div class="msg-bubble">📎 ${file.name}</div>`;
     area.appendChild(row);
     area.scrollTop = area.scrollHeight;
-    playTone(currentSound);
+    triggerAlertSound();
   }
 
   function wipeChat() {
