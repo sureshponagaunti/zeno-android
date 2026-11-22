@@ -1,4 +1,4 @@
-package com.zeno.chat
+package in.co.one7aistore.zeno
 
 import android.Manifest
 import android.annotation.SuppressLint
