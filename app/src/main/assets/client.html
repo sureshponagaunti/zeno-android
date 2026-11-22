@@ -1,102 +1,407 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZENO</title>
-  <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body {
-      margin: 0;
-      padding: 20px;
-      background: #0f172a;
-      color: #f8fafc;
-    }
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 14px;
-    }
-    h1 { margin: 0 0 6px; font-size: 22px; color: #38bdf8; }
-    p { margin: 4px 0 12px; color: #cbd5e1; font-size: 14px; }
-    button, .btn {
-      display: inline-block;
-      background: #0284c7;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 14px;
-      text-decoration: none;
-      cursor: pointer;
-      margin-right: 8px;
-      margin-top: 6px;
-    }
-    #status {
-      font-size: 13px;
-      padding: 10px;
-      border-radius: 8px;
-      background: #0f172a;
-      border: 1px dashed #475569;
-      white-space: pre-wrap;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ZENO Chat</title>
+<style>
+  :root {
+    --bg-main: #0f2419;
+    --bg-header: #132d1f;
+    --bg-subheader: #10261b;
+    --bg-card: #1a3a29;
+    --bg-input: #0b1b13;
+    --text-primary: #f4f7f5;
+    --text-secondary: #9fb8aa;
+    --gold: #d4af37;
+    --gold-bg: rgba(212, 175, 55, 0.14);
+    --green-accent: #1ea866;
+    --bubble-in: #1d3b2b;
+    --bubble-out: #28593f;
+    --border-color: rgba(212, 175, 55, 0.28);
+    --danger: #c93b3b;
+  }
+
+  [data-theme="light"] {
+    --bg-main: #f4f6f5;
+    --bg-header: #ffffff;
+    --bg-subheader: #eef3f0;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --text-primary: #16261e;
+    --text-secondary: #5c7065;
+    --gold: #a6821c;
+    --gold-bg: rgba(166, 130, 28, 0.12);
+    --green-accent: #1b8f56;
+    --bubble-in: #e4ede8;
+    --bubble-out: #cce3d6;
+    --border-color: rgba(22, 38, 30, 0.14);
+    --danger: #d32f2f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body {
+    background: var(--bg-main);
+    color: var(--text-primary);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background 0.25s, color 0.25s;
+  }
+
+  /* Top Header */
+  .top-bar {
+    background: var(--bg-header);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .brand-left { display: flex; align-items: center; gap: 10px; }
+  .z-logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: #134e32; border: 1.5px solid var(--gold);
+    color: #fff; font-weight: 800; font-size: 19px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .user-label { font-weight: 600; font-size: 15px; }
+
+  .role-pill {
+    background: var(--gold-bg);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--gold-bg);
+    border: 1.5px solid var(--gold);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+  }
+  .icon-btn.muted { opacity: 0.55; }
+
+  /* Subheader */
+  .sub-bar {
+    background: var(--bg-subheader);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .sub-left { display: flex; align-items: center; gap: 10px; }
+  .pill-btn {
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .contact-name { font-size: 16px; font-weight: 700; }
+  .sub-right { display: flex; align-items: center; gap: 8px; }
+  .call-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--gold);
+    background: transparent; color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px;
+  }
+  .wipe-btn {
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(201, 59, 59, 0.15);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .hidden { display: none !important; }
+
+  /* Chat Area */
+  .chat-area {
+    flex: 1;
+    padding: 16px 14px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg-row { display: flex; flex-direction: column; max-width: 78%; }
+  .msg-row.in { align-self: flex-start; }
+  .msg-row.out { align-self: flex-end; align-items: flex-end; }
+  .msg-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+  .msg-row.in .msg-bubble { background: var(--bubble-in); border-bottom-left-radius: 4px; }
+  .msg-row.out .msg-bubble { background: var(--bubble-out); border-bottom-right-radius: 4px; }
+
+  /* Footer Input */
+  .footer-bar {
+    background: var(--bg-header);
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+  .attach-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card); color: var(--text-primary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 17px; flex-shrink: 0;
+  }
+  .msg-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    outline: none;
+  }
+  .send-btn {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    background: var(--green-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* In-App Notification Sound Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-card {
+    width: 100%; max-width: 340px;
+    background: var(--bg-header);
+    border: 1.5px solid var(--gold);
+    border-radius: 16px;
+    padding: 18px;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; color: var(--gold); margin-bottom: 12px; }
+  .sound-option {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 8px; cursor: pointer;
+  }
+  .sound-option.active { border-color: var(--gold); background: var(--gold-bg); }
+  .modal-close {
+    width: 100%; margin-top: 8px; padding: 10px;
+    border-radius: 10px; border: none;
+    background: var(--green-accent); color: #fff; font-weight: 700; cursor: pointer;
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>ZENO</h1>
-    <p>Android WebView asset loaded successfully.</p>
-    <div id="status">Ready.</div>
+
+  <!-- Top Header -->
+  <div class="top-bar">
+    <div class="brand-left">
+      <div class="z-logo">Z</div>
+      <span class="user-label" id="topUserLabel">mrs</span>
+    </div>
+
+    <!-- Tap to switch Admin (dude boss) / Customer (dude) -->
+    <div class="role-pill" id="roleBadge" onclick="toggleRole()">dude boss</div>
+
+    <div class="header-actions">
+      <!-- Notification Sound Control -->
+      <button class="icon-btn" id="notifBtn" title="Notification Sound" onclick="openSoundModal()">🔔</button>
+      <!-- Theme Switch (Dark / Lite) -->
+      <button class="icon-btn" id="themeBtn" title="Switch Theme" onclick="toggleTheme()">🌗</button>
+    </div>
   </div>
 
-  <div class="card">
-    <p><strong>Media &amp; Files</strong></p>
-    <input id="fileInput" type="file" multiple style="display:none" />
-    <button type="button" onclick="document.getElementById('fileInput').click()">Select Files / Photos</button>
-    <button type="button" onclick="requestMedia()">Test Camera &amp; Mic</button>
+  <!-- Subheader -->
+  <div class="sub-bar">
+    <div class="sub-left">
+      <button class="pill-btn" onclick="alert('Back pressed')">← Back</button>
+      <span class="contact-name" id="chatTitle">dude</span>
+    </div>
+    <div class="sub-right">
+      <button class="call-btn admin-only" title="Audio Call" onclick="startCall('Audio')">📞</button>
+      <button class="call-btn admin-only" title="Video Call" onclick="startCall('Video')">🎥</button>
+      <button class="wipe-btn" onclick="wipeChat()">Wipe Chat</button>
+    </div>
   </div>
 
-  <div class="card">
-    <p><strong>External Links</strong></p>
-    <a class="btn" href="https://whatsapp.com">Open WhatsApp</a>
-    <a class="btn" href="https://drive.google.com">Open Google Drive</a>
+  <!-- Messages -->
+  <div class="chat-area" id="chatArea">
+    <div class="msg-row in">
+      <span class="msg-meta">Suresh • 10:36 PM</span>
+      <div class="msg-bubble">Hi</div>
+    </div>
+    <div class="msg-row out">
+      <span class="msg-meta">You • 10:49 PM</span>
+      <div class="msg-bubble">Hello</div>
+    </div>
   </div>
 
-  <script>
-    const statusEl = document.getElementById('status');
-    const fileInput = document.getElementById('fileInput');
+  <!-- Footer -->
+  <div class="footer-bar">
+    <input type="file" id="fileInput" class="hidden" onchange="handleAttachment(event)" />
+    <button class="attach-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+    <input type="text" class="msg-input" id="msgInput" placeholder="Write a private message..." onkeydown="if(event.key==='Enter') sendMessage()" />
+    <button class="send-btn" onclick="sendMessage()">Send</button>
+  </div>
 
-    function logStatus(msg) {
-      statusEl.textContent = msg;
-    }
+  <!-- In-App Notification Sound Modal -->
+  <div class="modal-backdrop" id="soundModal">
+    <div class="modal-card">
+      <div class="modal-title">In-App Notification Sound</div>
+      <div class="sound-option" data-sound="zeno_ding" onclick="selectSound('zeno_ding')">
+        <span>ZENO Ding</span><span>▶</span>
+      </div>
+      <div class="sound-option" data-sound="soft_plink" onclick="selectSound('soft_plink')">
+        <span>Soft Plink</span><span>▶</span>
+      </div>
+      <div class="sound-option" data-sound="gentle_chime" onclick="selectSound('gentle_chime')">
+        <span>Gentle Chime</span><span>▶</span>
+      </div>
+      <div class="sound-option" data-sound="mute" onclick="selectSound('mute')">
+        <span>Mute Sound</span><span>🔇</span>
+      </div>
+      <button class="modal-close" onclick="closeSoundModal()">Done</button>
+    </div>
+  </div>
 
-    try {
-      localStorage.setItem('zeno_loaded', 'true');
-      logStatus('WebView JS & storage active.');
-    } catch (e) {
-      logStatus('Storage note: ' + e.message);
-    }
+<script>
+  let currentTheme = localStorage.getItem('zeno_theme') || 'dark';
+  let currentSound = localStorage.getItem('zeno_sound') || 'zeno_ding';
+  let isAdmin = true; // true = dude boss, false = dude (customer)
 
-    fileInput.addEventListener('change', () => {
-      const names = Array.from(fileInput.files || []).map(f => f.name);
-      logStatus(names.length ? 'Selected: ' + names.join(', ') : 'No file selected.');
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('zeno_theme', theme);
+  }
+  applyTheme(currentTheme);
+
+  function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  }
+
+  function toggleRole() {
+    isAdmin = !isAdmin;
+    document.getElementById('roleBadge').textContent = isAdmin ? 'dude boss' : 'dude';
+    document.getElementById('chatTitle').textContent = isAdmin ? 'dude' : 'Suresh';
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.classList.toggle('hidden', !isAdmin);
     });
+  }
 
-    async function requestMedia() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        logStatus('Media devices not available in this WebView.');
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        stream.getTracks().forEach(t => t.stop());
-        logStatus('Camera & microphone permission granted.');
-      } catch (err) {
-        logStatus('Media permission error: ' + err.message);
-      }
+  // Built-in Web Audio Tone Generator (works offline inside WebView)
+  function playTone(type) {
+    if (type === 'mute') return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'zeno_ding') { osc.frequency.value = 880; osc.type = 'sine'; }
+      else if (type === 'soft_plink') { osc.frequency.value = 620; osc.type = 'triangle'; }
+      else { osc.frequency.value = 1046; osc.type = 'sine'; }
+
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {}
+  }
+
+  function openSoundModal() {
+    document.querySelectorAll('.sound-option').forEach(el => {
+      el.classList.toggle('active', el.dataset.sound === currentSound);
+    });
+    document.getElementById('soundModal').classList.add('open');
+  }
+
+  function closeSoundModal() {
+    document.getElementById('soundModal').classList.remove('open');
+  }
+
+  function selectSound(sound) {
+    currentSound = sound;
+    localStorage.setItem('zeno_sound', sound);
+    document.getElementById('notifBtn').classList.toggle('muted', sound === 'mute');
+    document.querySelectorAll('.sound-option').forEach(el => {
+      el.classList.toggle('active', el.dataset.sound === sound);
+    });
+    playTone(sound);
+    if (window.AndroidBridge && window.AndroidBridge.saveSoundPreference) {
+      window.AndroidBridge.saveSoundPreference(sound);
     }
-  </script>
+  }
+
+  function getTimeNow() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const area = document.getElementById('chatArea');
+    const row = document.createElement('div');
+    row.className = 'msg-row out';
+    row.innerHTML = `<span class="msg-meta">You • ${getTimeNow()}</span><div class="msg-bubble">${text}</div>`;
+    area.appendChild(row);
+    input.value = '';
+    area.scrollTop = area.scrollHeight;
+    playTone(currentSound);
+  }
+
+  function handleAttachment(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const area = document.getElementById('chatArea');
+    const row = document.createElement('div');
+    row.className = 'msg-row out';
+    row.innerHTML = `<span class="msg-meta">You • ${getTimeNow()}</span><div class="msg-bubble">📎 ${file.name}</div>`;
+    area.appendChild(row);
+    area.scrollTop = area.scrollHeight;
+    playTone(currentSound);
+  }
+
+  function wipeChat() {
+    document.getElementById('chatArea').innerHTML = '';
+  }
+
+  function startCall(mode) {
+    if (window.AndroidBridge && window.AndroidBridge.onCallTriggered) {
+      window.AndroidBridge.onCallTriggered(mode);
+    } else {
+      alert(`Starting ${mode} Call...`);
+    }
+  }
+</script>
 </body>
 </html>
