@@ -12,9 +12,11 @@
 
     <application
         android:allowBackup="true"
-        android:label="ZENO Chat"
+        android:icon="@drawable/zeno_logo"
+        android:label="zeno by one7"
+        android:roundIcon="@drawable/zeno_logo"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:usesCleartextTraffic="true">
 
         <activity
