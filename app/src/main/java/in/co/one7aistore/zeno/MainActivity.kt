@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -19,11 +20,13 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
 
-    private lateinit var webView: WebView
+    private var webView: WebView? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -31,30 +34,36 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         try {
-            webView = WebView(this)
-            setContentView(webView)
+            val wv = WebView(this)
+            wv.setBackgroundColor(Color.parseColor("#0f2419"))
+            webView = wv
+            setContentView(wv)
 
-            webView.settings.apply {
+            wv.settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 allowFileAccess = true
+                allowContentAccess = true
                 mediaPlaybackRequiresUserGesture = false
             }
 
-            webView.addJavascriptInterface(
+            wv.addJavascriptInterface(
                 ZenoBridge(this) { callType -> ensureCallPermissions(callType) },
                 "AndroidBridge"
             )
 
-            webView.webViewClient = object : WebViewClient() {
+            wv.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    val savedSound = getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
-                        .getString("notif_sound", "zeno_ding") ?: "zeno_ding"
-                    webView.evaluateJavascript(
-                        "if (typeof applySavedSoundFromNative === 'function') { applySavedSoundFromNative('$savedSound'); }",
-                        null
-                    )
+                    try {
+                        val savedSound = getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
+                            .getString("notif_sound", "zeno_ding") ?: "zeno_ding"
+                        view?.evaluateJavascript(
+                            "if (typeof applySavedSoundFromNative === 'function') { applySavedSoundFromNative('$savedSound'); }",
+                            null
+                        )
+                    } catch (_: Exception) {
+                    }
                 }
 
                 override fun onReceivedError(
@@ -64,16 +73,12 @@ class MainActivity : Activity() {
                 ) {
                     super.onReceivedError(view, request, error)
                     if (request?.isForMainFrame == true) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Load error: ${error?.description}",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        showErrorOnScreen("WebView Load Error: ${error?.description} (code ${error?.errorCode})")
                     }
                 }
             }
 
-            webView.webChromeClient = object : WebChromeClient() {
+            wv.webChromeClient = object : WebChromeClient() {
                 override fun onShowFileChooser(
                     webView: WebView?,
                     filePathCallback: ValueCallback<Array<Uri>>?,
@@ -90,9 +95,25 @@ class MainActivity : Activity() {
                 }
             }
 
-            webView.loadUrl("file:///android_asset/client.html")
-        } catch (e: Exception) {
-            Toast.makeText(this, "Startup error: ${e.message}", Toast.LENGTH_LONG).show()
+            wv.loadUrl("file:///android_asset/client.html")
+        } catch (t: Throwable) {
+            showErrorOnScreen("Startup Crash:\n${t.javaClass.simpleName}: ${t.message}\n\n${t.stackTraceToString()}")
+        }
+    }
+
+    private fun showErrorOnScreen(message: String) {
+        try {
+            val scroll = ScrollView(this)
+            val tv = TextView(this).apply {
+                text = message
+                setTextColor(Color.WHITE)
+                setBackgroundColor(Color.parseColor("#1a0f0f"))
+                setPadding(32, 48, 32, 48)
+                textSize = 13f
+            }
+            scroll.addView(tv)
+            setContentView(scroll)
+        } catch (_: Exception) {
         }
     }
 
@@ -132,6 +153,15 @@ class MainActivity : Activity() {
             val msg = if (allGranted) "Permissions granted" else "Some permissions denied"
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onDestroy() {
+        webView?.apply {
+            stopLoading()
+            destroy()
+        }
+        webView = null
+        super.onDestroy()
     }
 
     class ZenoBridge(
