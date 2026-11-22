@@ -1,181 +1,158 @@
-package in.co.one7aistore.zeno;
+package com.zeno.chat
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.view.ActionMode;
-import android.view.WindowManager;
-import android.webkit.PermissionRequest;
-import android.webkit.ValueCallback;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+class MainActivity : AppCompatActivity() {
 
-import java.util.ArrayList;
-import java.util.List;
+    private lateinit var webView: WebView
+    private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
-public class MainActivity extends AppCompatActivity {
-
-    private static final String START_URL = "file:///android_asset/client.html";
-    private static final int PERM_REQUEST_CODE = 1001;
-
-    private WebView webView;
-    private ValueCallback<Uri[]> filePathCallback;
-    private PermissionRequest pendingPermissionRequest;
-
-    private final ActivityResultLauncher<Intent> fileChooserLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (filePathCallback == null) return;
-                Uri[] results = null;
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Intent data = result.getData();
-                    if (data.getClipData() != null) {
-                        int count = data.getClipData().getItemCount();
-                        results = new Uri[count];
-                        for (int i = 0; i < count; i++) {
-                            results[i] = data.getClipData().getItemAt(i).getUri();
-                        }
-                    } else if (data.getData() != null) {
-                        results = new Uri[]{data.getData()};
-                    }
-                }
-                filePathCallback.onReceiveValue(results);
-                filePathCallback = null;
-            });
-
-    @SuppressLint("SetJavaScriptEnabled")
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        try {
-            getWindow().setFlags(
-                    WindowManager.LayoutParams.FLAG_SECURE,
-                    WindowManager.LayoutParams.FLAG_SECURE
-            );
-        } catch (Exception ignored) {
-        }
-
-        webView = new WebView(this) {
-            @Override
-            public ActionMode startActionMode(ActionMode.Callback callback, int type) {
-                return super.startActionMode(callback, type);
-            }
-        };
-        setContentView(webView);
-
-        configureWebView();
-        webView.loadUrl(START_URL);
-        requestMediaAndCallPermissions();
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data?.data
+        fileUploadCallback?.onReceiveValue(if (data != null) arrayOf(data) else null)
+        fileUploadCallback = null
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private void configureWebView() {
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url.contains("drive.google.com") || url.contains("whatsapp.com")) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(intent);
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onShowFileChooser(
-                    WebView view,
-                    ValueCallback<Uri[]> callback,
-                    FileChooserParams params
-            ) {
-                if (filePathCallback != null) {
-                    filePathCallback.onReceiveValue(null);
-                }
-                filePathCallback = callback;
-
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("*/*");
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*", "audio/*", "*/*"});
-
-                fileChooserLauncher.launch(Intent.createChooser(intent, "Select File or Photo"));
-                return true;
-            }
-
-            @Override
-            public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> {
-                    pendingPermissionRequest = request;
-                    request.grant(request.getResources());
-                });
-            }
-        });
-    }
-
-    private void requestMediaAndCallPermissions() {
-        try {
-            List<String> perms = new ArrayList<>();
-            perms.add(Manifest.permission.CAMERA);
-            perms.add(Manifest.permission.RECORD_AUDIO);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                perms.add(Manifest.permission.READ_MEDIA_IMAGES);
-                perms.add(Manifest.permission.READ_MEDIA_VIDEO);
-                perms.add(Manifest.permission.READ_MEDIA_AUDIO);
-            } else {
-                perms.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
-
-            List<String> missing = new ArrayList<>();
-            for (String p : perms) {
-                if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                    missing.add(p);
-                }
-            }
-            if (!missing.isEmpty()) {
-                ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), PERM_REQUEST_CODE);
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+    private val mediaPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val camOk = grants[Manifest.permission.CAMERA] == true
+        val micOk = grants[Manifest.permission.RECORD_AUDIO] == true
+        val msg = if (camOk && micOk) {
+            "Camera & Mic permissions granted"
         } else {
-            super.onBackPressed();
+            "Some call permissions were denied"
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        webView = WebView(this)
+        setContentView(webView)
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            mediaPlaybackRequiresUserGesture = false
+        }
+
+        webView.addJavascriptInterface(
+            ZenoBridge(this) { callType -> ensureCallPermissions(callType) },
+            "AndroidBridge"
+        )
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                val savedSound = getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
+                    .getString("notif_sound", "zeno_ding") ?: "zeno_ding"
+                webView.evaluateJavascript(
+                    "if (typeof selectSound === 'function') { currentSound = '$savedSound'; localStorage.setItem('zeno_sound', '$savedSound'); }",
+                    null
+                )
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                fileUploadCallback?.onReceiveValue(null)
+                fileUploadCallback = filePathCallback
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                filePickerLauncher.launch(Intent.createChooser(intent, "Select Attachment"))
+                return true
+            }
+        }
+
+        webView.loadUrl("file:///android_asset/client.html")
+    }
+
+    private fun ensureCallPermissions(callType: String) {
+        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (callType.equals("Video", ignoreCase = true)) {
+            needed.add(Manifest.permission.CAMERA)
+        }
+        val missing = needed.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            Toast.makeText(this, "Starting $callType Call...", Toast.LENGTH_SHORT).show()
+        } else {
+            mediaPermissionsLauncher.launch(missing.toTypedArray())
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        if (pendingPermissionRequest != null) {
-            pendingPermissionRequest.deny();
+    class ZenoBridge(
+        private val context: Context,
+        private val onCallRequest: (String) -> Unit
+    ) {
+        @JavascriptInterface
+        fun saveSoundPreference(soundName: String) {
+            val prefs = context.getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("notif_sound", soundName).apply()
+            playNotificationTone(soundName)
         }
-        super.onDestroy();
+
+        @JavascriptInterface
+        fun playSavedNotificationSound() {
+            val prefs = context.getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
+            val saved = prefs.getString("notif_sound", "zeno_ding") ?: "zeno_ding"
+            playNotificationTone(saved)
+        }
+
+        @JavascriptInterface
+        fun onCallTriggered(callType: String) {
+            Handler(Looper.getMainLooper()).post {
+                onCallRequest(callType)
+            }
+        }
+
+        private fun playNotificationTone(soundName: String) {
+            if (soundName == "mute") return
+            try {
+                val toneType = when (soundName) {
+                    "soft_plink" -> ToneGenerator.TONE_PROP_BEEP
+                    "gentle_chime" -> ToneGenerator.TONE_PROP_ACK
+                    else -> ToneGenerator.TONE_PROP_BEEP2
+                }
+                val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80)
+                toneGen.startTone(toneType, 180)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    toneGen.release()
+                }, 250)
+            } catch (_: Exception) {
+            }
+        }
     }
 }
