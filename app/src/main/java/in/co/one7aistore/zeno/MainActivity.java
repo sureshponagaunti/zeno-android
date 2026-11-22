@@ -9,8 +9,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.ActionMode;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.WindowManager;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -62,24 +60,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // No-record / block screenshots & screen capture
-        getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_SECURE,
-                WindowManager.LayoutParams.FLAG_SECURE
-        );
+        try {
+            getWindow().setFlags(
+                    WindowManager.LayoutParams.FLAG_SECURE,
+                    WindowManager.LayoutParams.FLAG_SECURE
+            );
+        } catch (Exception ignored) {
+        }
 
         webView = new WebView(this) {
             @Override
             public ActionMode startActionMode(ActionMode.Callback callback, int type) {
-                // Allow copy & paste freely on all fields including passwords
                 return super.startActionMode(callback, type);
             }
         };
         setContentView(webView);
 
-        requestMediaAndCallPermissions();
         configureWebView();
         webView.loadUrl(START_URL);
+        requestMediaAndCallPermissions();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -137,26 +136,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestMediaAndCallPermissions() {
-        List<String> perms = new ArrayList<>();
-        perms.add(Manifest.permission.CAMERA);
-        perms.add(Manifest.permission.RECORD_AUDIO);
+        try {
+            List<String> perms = new ArrayList<>();
+            perms.add(Manifest.permission.CAMERA);
+            perms.add(Manifest.permission.RECORD_AUDIO);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            perms.add(Manifest.permission.READ_MEDIA_IMAGES);
-            perms.add(Manifest.permission.READ_MEDIA_VIDEO);
-            perms.add(Manifest.permission.READ_MEDIA_AUDIO);
-        } else {
-            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
-
-        List<String> missing = new ArrayList<>();
-        for (String p : perms) {
-            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(p);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                perms.add(Manifest.permission.READ_MEDIA_IMAGES);
+                perms.add(Manifest.permission.READ_MEDIA_VIDEO);
+                perms.add(Manifest.permission.READ_MEDIA_AUDIO);
+            } else {
+                perms.add(Manifest.permission.READ_EXTERNAL_STORAGE);
             }
-        }
-        if (!missing.isEmpty()) {
-            ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), PERM_REQUEST_CODE);
+
+            List<String> missing = new ArrayList<>();
+            for (String p : perms) {
+                if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(p);
+                }
+            }
+            if (!missing.isEmpty()) {
+                ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), PERM_REQUEST_CODE);
+            }
+        } catch (Exception ignored) {
         }
     }
 
