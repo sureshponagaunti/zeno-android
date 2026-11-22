@@ -2,10 +2,10 @@ package in.co.one7aistore.zeno
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -15,87 +15,95 @@ import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     private lateinit var webView: WebView
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
-    private val filePickerLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val data = result.data?.data
-        fileUploadCallback?.onReceiveValue(if (data != null) arrayOf(data) else null)
-        fileUploadCallback = null
-    }
-
-    private val mediaPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        val camOk = grants[Manifest.permission.CAMERA] == true
-        val micOk = grants[Manifest.permission.RECORD_AUDIO] == true
-        val msg = if (camOk && micOk) {
-            "Camera & Mic permissions granted"
-        } else {
-            "Some call permissions were denied"
-        }
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        webView = WebView(this)
-        setContentView(webView)
 
-        webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            allowFileAccess = true
-            mediaPlaybackRequiresUserGesture = false
-        }
+        try {
+            webView = WebView(this)
+            setContentView(webView)
 
-        webView.addJavascriptInterface(
-            ZenoBridge(this) { callType -> ensureCallPermissions(callType) },
-            "AndroidBridge"
-        )
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                val savedSound = getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
-                    .getString("notif_sound", "zeno_ding") ?: "zeno_ding"
-                webView.evaluateJavascript(
-                    "if (typeof selectSound === 'function') { currentSound = '$savedSound'; localStorage.setItem('zeno_sound', '$savedSound'); }",
-                    null
-                )
+            webView.settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                allowFileAccess = true
+                mediaPlaybackRequiresUserGesture = false
             }
-        }
 
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onShowFileChooser(
-                webView: WebView?,
-                filePathCallback: ValueCallback<Array<Uri>>?,
-                fileChooserParams: FileChooserParams?
-            ): Boolean {
-                fileUploadCallback?.onReceiveValue(null)
-                fileUploadCallback = filePathCallback
-                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "*/*"
+            webView.addJavascriptInterface(
+                ZenoBridge(this) { callType -> ensureCallPermissions(callType) },
+                "AndroidBridge"
+            )
+
+            webView.webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    val savedSound = getSharedPreferences("zeno_prefs", Context.MODE_PRIVATE)
+                        .getString("notif_sound", "zeno_ding") ?: "zeno_ding"
+                    webView.evaluateJavascript(
+                        "if (typeof applySavedSoundFromNative === 'function') { applySavedSoundFromNative('$savedSound'); }",
+                        null
+                    )
                 }
-                filePickerLauncher.launch(Intent.createChooser(intent, "Select Attachment"))
-                return true
-            }
-        }
 
-        webView.loadUrl("file:///android_asset/client.html")
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: WebResourceError?
+                ) {
+                    super.onReceivedError(view, request, error)
+                    if (request?.isForMainFrame == true) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Load error: ${error?.description}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+
+            webView.webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(
+                    webView: WebView?,
+                    filePathCallback: ValueCallback<Array<Uri>>?,
+                    fileChooserParams: FileChooserParams?
+                ): Boolean {
+                    fileUploadCallback?.onReceiveValue(null)
+                    fileUploadCallback = filePathCallback
+                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "*/*"
+                    }
+                    startActivityForResult(Intent.createChooser(intent, "Select Attachment"), 1001)
+                    return true
+                }
+            }
+
+            webView.loadUrl("file:///android_asset/client.html")
+        } catch (e: Exception) {
+            Toast.makeText(this, "Startup error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1001) {
+            val resultUri = if (resultCode == RESULT_OK) data?.data else null
+            fileUploadCallback?.onReceiveValue(if (resultUri != null) arrayOf(resultUri) else null)
+            fileUploadCallback = null
+        }
     }
 
     private fun ensureCallPermissions(callType: String) {
@@ -104,12 +112,25 @@ class MainActivity : AppCompatActivity() {
             needed.add(Manifest.permission.CAMERA)
         }
         val missing = needed.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isEmpty()) {
             Toast.makeText(this, "Starting $callType Call...", Toast.LENGTH_SHORT).show()
         } else {
-            mediaPermissionsLauncher.launch(missing.toTypedArray())
+            requestPermissions(missing.toTypedArray(), 2001)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2001 && grantResults.isNotEmpty()) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            val msg = if (allGranted) "Permissions granted" else "Some permissions denied"
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
