@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZENO</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; color: #38bdf8; }
+    p { margin: 4px 0 12px; color: #cbd5e1; font-size: 14px; }
+    button, .btn {
+      display: inline-block;
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-top: 6px;
+    }
+    #status {
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #0f172a;
+      border: 1px dashed #475569;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ZENO</h1>
+    <p>Android WebView asset loaded successfully.</p>
+    <div id="status">Ready.</div>
+  </div>
+
+  <div class="card">
+    <p><strong>Media &amp; Files</strong></p>
+    <input id="fileInput" type="file" multiple style="display:none" />
+    <button type="button" onclick="document.getElementById('fileInput').click()">Select Files / Photos</button>
+    <button type="button" onclick="requestMedia()">Test Camera &amp; Mic</button>
+  </div>
+
+  <div class="card">
+    <p><strong>External Links</strong></p>
+    <a class="btn" href="https://whatsapp.com">Open WhatsApp</a>
+    <a class="btn" href="https://drive.google.com">Open Google Drive</a>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
+
+    function logStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    try {
+      localStorage.setItem('zeno_loaded', 'true');
+      logStatus('WebView JS & storage active.');
+    } catch (e) {
+      logStatus('Storage note: ' + e.message);
+    }
+
+    fileInput.addEventListener('change', () => {
+      const names = Array.from(fileInput.files || []).map(f => f.name);
+      logStatus(names.length ? 'Selected: ' + names.join(', ') : 'No file selected.');
+    });
+
+    async function requestMedia() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        logStatus('Media devices not available in this WebView.');
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        stream.getTracks().forEach(t => t.stop());
+        logStatus('Camera & microphone permission granted.');
+      } catch (err) {
+        logStatus('Media permission error: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
